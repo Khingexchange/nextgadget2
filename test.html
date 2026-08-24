@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test</title>
+</head>
+<body style="background:#000; color:#0f0; font-family:monospace; padding:20px; font-size:18px;">
+
+<p id="step1">Step 1: Page loaded ✅</p>
+<p id="step2">Step 2: Waiting for library...</p>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  document.getElementById("step2").textContent =
+    window.supabase
+      ? "Step 2: Supabase library LOADED ✅"
+      : "Step 2: Supabase library FAILED TO LOAD ❌";
+</script>
+
+</body>
+</html>
