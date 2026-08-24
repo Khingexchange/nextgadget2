@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextGadget Admin</title>
+<style>
+  body { background:#0d0f12; color:#f2f3f5; font-family:-apple-system, sans-serif; padding:24px; }
+  .wrap { max-width:640px; margin:0 auto; }
+  h1 { font-size:1.6rem; margin-bottom:24px; }
+  h1 span { color:#4f9dff; }
+  .card { background:#16191d; border:1px solid #262b31; border-radius:14px; padding:24px; margin-bottom:20px; }
+  label { display:block; font-size:0.85rem; color:#9aa1ab; margin-bottom:6px; margin-top:14px; }
+  label:first-child { margin-top:0; }
+  input, textarea { width:100%; background:#0d0f12; border:1px solid #262b31; border-radius:8px; padding:10px 12px; color:#f2f3f5; font-size:0.95rem; font-family:inherit; }
+  textarea { resize:vertical; min-height:70px; }
+  button { margin-top:18px; width:100%; background:#4f9dff; color:#0d0f12; font-weight:700; border:none; padding:12px; border-radius:8px; font-size:0.95rem; }
+  button.danger { background:transparent; color:#ff5f5f; border:1px solid #ff5f5f; margin-top:0; width:auto; padding:6px 12px; font-size:0.8rem; }
+  .msg { font-size:0.85rem; margin-top:10px; color:#9aa1ab; }
+  .msg.error { color:#ff5f5f; }
+  #app { display:none; }
+  .product-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #262b31; gap:12px; }
+  .logout { background:transparent; border:1px solid #262b31; color:#9aa1ab; width:auto; padding:8px 14px; font-size:0.85rem; margin-top:0; }
+  .top-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div id="login">
+    <h1>Next<span>Gadget</span> Admin</h1>
+    <div class="card">
+      <p id="status" class="msg">Loading Supabase...</p>
+      <label>Email</label>
+      <input type="email" id="email">
+      <label>Password</label>
+      <input type="password" id="password">
+      <button onclick="doLogin()">Log In</button>
+      <p id="result" class="msg"></p>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="top-row">
+      <h1>Next<span>Gadget</span> Admin</h1>
+      <button class="logout" onclick="doLogout()">Log Out</button>
+    </div>
+
+    <div class="card">
+      <label>Product Name</label>
+      <input type="text" id="p-name">
+      <label>Price</label>
+      <input type="text" id="p-price">
+      <label>Description</label>
+      <textarea id="p-desc"></textarea>
+      <label>Badge (optional)</label>
+      <input type="text" id="p-badge">
+      <label>Rating (optional)</label>
+      <input type="text" id="p-rating">
+      <label>Image URL (optional)</label>
+      <input type="text" id="p-image">
+      <label>Amazon Affiliate Link</label>
+      <input type="text" id="p-link">
+      <button onclick="addProduct()">Add Product</button>
+      <p id="add-msg" class="msg"></p>
+    </div>
+
+    <div class="card">
+      <h1 style="font-size:1.1rem; margin-bottom:12px;">Your Products</h1>
+      <div id="product-list">Loading...</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var SUPABASE_URL = "https://qkcmhcpdegczjggsmygf.supabase.co";
+  var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrY21oY3BkZWdjempnZ3NteWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0Mzk5MzEsImV4cCI6MjEwMzAxNTkzMX0.PZcGpeFxtRM5XuZwTvQo1UXQ1Ik1zUrpcnEyUu4bqbw";
+
+  var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  document.getElementById("status").textContent = "Ready to log in.";
+
+  function doLogin() {
+    var email = document.getElementById("email").value;
+    var password = document.getElementById("password").value;
+    document.getElementById("result").textContent = "Trying to log in...";
+
+    client.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+      if (res.error) {
+        document.getElementById("result").textContent = "ERROR: " + res.error.message;
+      } else {
+        document.getElementById("result").textContent = "";
+        document.getElementById("login").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        loadProducts();
+      }
+    });
+  }
+
+  function doLogout() {
+    client.auth.signOut().then(function() {
+      document.getElementById("app").style.display = "none";
+      document.getElementById("login").style.display = "block";
+    });
+  }
+
+  function addProduct() {
+    var product = {
+      name: document.getElementById("p-name").value,
+      price: document.getElementById("p-price").value,
+      description: document.getElementById("p-desc").value,
+      badge: document.getElementById("p-badge").value,
+      rating: document.getElementById("p-rating").value,
+      image_url: document.getElementById("p-image").value,
+      affiliate_link: document.getElementById("p-link").value
+    };
+
+    var msg = document.getElementById("add-msg");
+
+    if (!product.name || !product.affiliate_link) {
+      msg.textContent = "Name and affiliate link are required.";
+      msg.className = "msg error";
+      return;
+    }
+
+    client.from("products").insert([product]).then(function(res) {
+      if (res.error) {
+        msg.textContent = res.error.message;
+        msg.className = "msg error";
+        return;
+      }
+      msg.textContent = "Product added!";
+      msg.className = "msg";
+      ["p-name","p-price","p-desc","p-badge","p-rating","p-image","p-link"].forEach(function(id) {
+        document.getElementById(id).value = "";
+      });
+      loadProducts();
+    });
+  }
+
+  function deleteProduct(id) {
+    if (!confirm("Delete this product?")) return;
+    client.from("products").delete().eq("id", id).then(function() {
+      loadProducts();
+    });
+  }
+
+  function loadProducts() {
+    var list = document.getElementById("product-list");
+    client.from("products").select("*").order("created_at", { ascending: false }).then(function(res) {
+      if (res.error) {
+        list.innerHTML = "Error: " + res.error.message;
+        return;
+      }
+      if (!res.data || res.data.length === 0) {
+        list.innerHTML = "No products yet.";
+        return;
+      }
+      var html = "";
+      for (var i = 0; i < res.data.length; i++) {
+        var p = res.data[i];
+        html += '<div class="product-row"><div><strong>' + p.name + '</strong><br><span style="color:#9aa1ab; font-size:0.8rem;">' + (p.price || "") + '</span></div><button class="danger" onclick="deleteProduct(\'' + p.id + '\')">Delete</button></div>';
+      }
+      list.innerHTML = html;
+    });
+  }
+
+  client.auth.getSession().then(function(res) {
+    if (res.data.session) {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadProducts();
+    }
+  });
+</script>
+
+</body>
+</html>
