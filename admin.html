@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextGadget Admin</title>
+<style>
+  :root { --bg: #0d0f12; --bg-card: #16191d; --border: #262b31; --text: #f2f3f5; --text-muted: #9aa1ab; --accent: #4f9dff; --accent-hover: #6cadff; --danger: #ff5f5f; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; padding: 24px; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 24px; }
+  h1 span { color: var(--accent); }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+  label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; margin-top: 14px; }
+  label:first-child { margin-top: 0; }
+  input, textarea { width: 100%; background: #0d0f12; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 0.95rem; font-family: inherit; }
+  textarea { resize: vertical; min-height: 70px; }
+  button { margin-top: 18px; width: 100%; background: var(--accent); color: #0d0f12; font-weight: 700; border: none; padding: 12px; border-radius: 8px; font-size: 0.95rem; cursor: pointer; }
+  button:hover { background: var(--accent-hover); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); margin-top: 0; width: auto; padding: 6px 12px; font-size: 0.8rem; }
+  .msg { font-size: 0.85rem; margin-top: 10px; color: var(--text-muted); }
+  .msg.error { color: var(--danger); }
+  #app { display: none; }
+  #login { display: block; }
+  .product-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+  .product-row:last-child { border-bottom: none; }
+  .product-row .info { flex-grow: 1; }
+  .product-row .info strong { display: block; font-size: 0.95rem; }
+  .product-row .info span { font-size: 0.8rem; color: var(--text-muted); }
+  .logout { background: transparent; border: 1px solid var(--border); color: var(--text-muted); width: auto; padding: 8px 14px; font-size: 0.85rem; margin-top: 0; }
+  .top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login">
+    <h1>Next<span>Gadget</span> Admin</h1>
+    <div class="card">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="you@example.com">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••">
+      <button onclick="login()">Log In</button>
+      <div class="msg error" id="login-msg"></div>
+    </div>
+  </div>
+  <div id="app">
+    <div class="top-row">
+      <h1>Next<span>Gadget</span> Admin</h1>
+      <button class="logout" onclick="logout()">Log Out</button>
+    </div>
+    <div class="card">
+      <label>Product Name</label>
+      <input type="text" id="p-name" placeholder="Wireless ANC Headphones">
+      <label>Price</label>
+      <input type="text" id="p-price" placeholder="$89.99">
+      <label>Description</label>
+      <textarea id="p-desc" placeholder="Noise-cancelling over-ear headphones with 40hr battery life."></textarea>
+      <label>Badge (optional)</label>
+      <input type="text" id="p-badge" placeholder="Best Seller">
+      <label>Rating (optional)</label>
+      <input type="text" id="p-rating" placeholder="★★★★★ 4.7">
+      <label>Image URL (optional — paste a product photo link)</label>
+      <input type="text" id="p-image" placeholder="https://...">
+      <label>Amazon Affiliate Link</label>
+      <input type="text" id="p-link" placeholder="https://amzn.to/...">
+      <button onclick="addProduct()">Add Product</button>
+      <div class="msg" id="add-msg"></div>
+    </div>
+    <div class="card">
+      <h1 style="font-size:1.1rem; margin-bottom:12px;">Your Products</h1>
+      <div id="product-list">Loading…</div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://qkcmhcpdegczjggsmygf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrY21oY3BkZWdjempnZ3NteWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0Mzk5MzEsImV4cCI6MjEwMzAxNTkzMX0.PZcGpeFxtRM5XuZwTvQo1UXQ1Ik1zUrpcnEyUu4bqbw";
+
+  let supabase;
+  try {
+    if (!window.supabase) {
+      throw new Error("Supabase library failed to load — check internet connection.");
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    document.getElementById("login-msg").textContent = "Ready to log in.";
+  } catch (err) {
+    document.getElementById("login-msg").textContent = "Setup error: " + err.message;
+    document.getElementById("login-msg").className = "msg error";
+  }
+
+  async function checkSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadProducts();
+    }
+  }
+
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const msg = document.getElementById("login-msg");
+    msg.textContent = "Logging in...";
+    msg.className = "msg";
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        msg.textContent = error.message;
+        msg.className = "msg error";
+        return;
+      }
+      if (!data.session) {
+        msg.textContent = "Login didn't return a session. Try again.";
+        msg.className = "msg error";
+        return;
+      }
+      msg.textContent = "";
+      document.getElementById("login").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadProducts();
+    } catch (err) {
+      msg.textContent = "Error: " + err.message;
+      msg.className = "msg error";
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login").style.display = "block";
+  }
+
+  async function addProduct() {
+    const product = {
+      name: document.getElementById("p-name").value,
+      price: document.getElementById("p-price").value,
+      description: document.getElementById("p-desc").value,
+      badge: document.getElementById("p-badge").value,
+      rating: document.getElementById("p-rating").value,
+      image_url: document.getElementById("p-image").value,
+      affiliate_link: document.getElementById("p-link").value
+    };
+
+    const msg = document.getElementById("add-msg");
+
+    if (!product.name || !product.affiliate_link) {
+      msg.textContent = "Name and affiliate link are required.";
+      msg.className = "msg error";
+      return;
+    }
+
+    const { error } = await supabase.from("products").insert([product]);
+
+    if (error) {
+      msg.textContent = error.message;
+      msg.className = "msg error";
+      return;
+    }
+
+    msg.textContent = "Product added!";
+    msg.className = "msg";
+    ["p-name","p-price","p-desc","p-badge","p-rating","p-image","p-link"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    loadProducts();
+  }
+
+  async function deleteProduct(id) {
+    if (!confirm("Delete this product?")) return;
+    await supabase.from("products").delete().eq("id", id);
+    loadProducts();
+  }
+
+  async function loadProducts() {
+    const list = document.getElementById("product-list");
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        list.innerHTML = `<div class="msg error">${error.message}</div>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        list.innerHTML = `<div class="msg">No products yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = data.map(p => `
+        <div class="product-row">
+          <div class="info">
+            <strong>${p.name}</strong>
+            <span>${p.price || ""}</span>
+          </div>
+          <button class="danger" onclick="deleteProduct('${p.id}')">Delete</button>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="msg error">Connection error: ${err.message}</div>`;
+    }
+  }
+
+  checkSession();
+</script>
+</body>
+</html>
