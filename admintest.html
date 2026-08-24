@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Test</title>
+</head>
+<body style="background:#000; color:#0f0; font-family:monospace; padding:20px; font-size:16px;">
+
+<p id="status">Loading Supabase...</p>
+
+<div id="login-box">
+  <p>Email:</p>
+  <input type="email" id="email" style="width:100%; padding:8px; font-size:16px;">
+  <p>Password:</p>
+  <input type="password" id="password" style="width:100%; padding:8px; font-size:16px;">
+  <br><br>
+  <button onclick="doLogin()" style="padding:12px 20px; font-size:16px;">Log In</button>
+  <p id="result"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  var SUPABASE_URL = "https://qkcmhcpdegczjggsmygf.supabase.co";
+  var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrY21oY3BkZWdjempnZ3NteWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0Mzk5MzEsImV4cCI6MjEwMzAxNTkzMX0.PZcGpeFxtRM5XuZwTvQo1UXQ1Ik1zUrpcnEyUu4bqbw";
+
+  var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  document.getElementById("status").textContent = "Supabase client ready ✅";
+
+  function doLogin() {
+    var email = document.getElementById("email").value;
+    var password = document.getElementById("password").value;
+    document.getElementById("result").textContent = "Trying to log in...";
+
+    client.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
+      if (res.error) {
+        document.getElementById("result").textContent = "ERROR: " + res.error.message;
+      } else {
+        document.getElementById("result").textContent = "SUCCESS! Logged in as " + res.data.user.email;
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
